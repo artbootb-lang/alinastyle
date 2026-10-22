@@ -165,7 +165,7 @@ const r1=v=>Math.round(v*10)/10;
 
 /* ============ локальная мини-БД (localStorage) ============ */
 const KEY='alina_app_v1';
-const fresh=()=>({v:1,profile:{mama:'Алина',baby:'',birth:'',birthG:null,onboarded:false},food:[],baby:{},weight:[],water:{},flags:{},over:{},shop:{}});
+const fresh=()=>({v:1,profile:{mama:'Алина',baby:'',birth:'',birthG:null,onboarded:false},food:[],baby:{},weight:[],mw:[],water:{},flags:{},over:{},shop:{}});
 let D=fresh(),saveT=null;
 function load(){
   let raw=null;try{raw=JSON.parse(localStorage.getItem(KEY))}catch(e){raw=null}
@@ -457,7 +457,7 @@ function stackBar(p){
 const hourSlot=()=>{const h=new Date().getHours();return h<10?'b':h<12?'s1':h<15?'l':h<18?'s2':h<21?'d':'e'};
 const ui={tab:'home',plan:'week',diary:'food',kb:'cards',planDate:ymd(),diaryDate:ymd(),
  fd:{slot:hourSlot(),prods:[],rec:[],text:'',isNew:false},bd:null,bdDate:null,
- plate:{veg:[],starch:[],prot:[],fat:[]},plateMeal:'l',rf:{q:'',type:'all',tool:''},kbq:'',pf:{q:'',st:'all'},wd:{date:ymd(),v:''}};
+ plate:{veg:[],starch:[],prot:[],fat:[]},plateMeal:'l',rf:{q:'',type:'all',tool:''},kbq:'',pf:{q:'',st:'all'},wd:{date:ymd(),v:''},mw:{date:ymd(),v:''}};
 
 /* ============ отрисовка ============ */
 const TIPS=[
@@ -507,7 +507,7 @@ function viewHome(){
    <div style="height:10px"></div>${renderDay(today)}</section>
   <section class="card"><h3>💧 Вода</h3><div class="row between"><div class="row">${Array.from({length:10},(_,i)=>`<span style="font-size:22px;opacity:${i<w?1:.18}">💧</span>`).join('')}</div>
    <div class="row"><button class="ico" data-act="water" data-d="-1">−</button><b>${w}</b><button class="ico" data-act="water" data-d="1">+</button></div></div><div class="mute sm" style="margin-top:6px">Стакан ≈ 250 мл. Ориентир — по жажде, обычно 8–10 стаканов в день.</div></section>
-  <section class="card"><h3>Быстрые записи</h3><div class="grid g2"><button class="btn soft" data-act="go" data-t="diary" data-s="baby">👶 Как малыш сегодня</button><button class="btn soft" data-act="go" data-t="diary" data-s="food">🍽 Записать еду</button><button class="btn soft" data-act="go" data-t="diary" data-s="weight">⚖️ Вес малыша</button><button class="btn soft" data-act="go" data-t="plan" data-s="shop">🛒 Список покупок</button></div></section>
+  <section class="card"><h3>Быстрые записи</h3><div class="grid g2"><button class="btn soft" data-act="go" data-t="diary" data-s="baby">👶 Как малыш сегодня</button><button class="btn soft" data-act="go" data-t="diary" data-s="food">🍽 Записать еду</button><button class="btn soft" data-act="go" data-t="diary" data-s="weight">⚖️ Вес малыша</button><button class="btn soft" data-act="go" data-t="diary" data-s="mweight">🤍 Мой вес</button><button class="btn soft" data-act="go" data-t="plan" data-s="shop">🛒 Список покупок</button></div></section>
   <section class="card" style="background:var(--lilac-l);border:0"><b>💡 Совет дня</b><p style="margin:6px 0 0">${esc(tip)}</p></section>`;
 }
 
@@ -621,11 +621,12 @@ function openRecipe(id,m=1){
 /* --- дневник --- */
 function viewDiary(){
   const d=ui.diaryDate,isToday=d===ymd();
-  let h=`<h2>Дневник</h2>`+segHtml([['food','🍽 Еда'],['baby','👶 Малыш'],['weight','⚖️ Вес']],ui.diary,'diary');
-  if(ui.diary!=='weight')h+=`<div class="row between" style="margin-bottom:12px"><button class="ico" data-act="ddate" data-d="-1">‹</button><b>${isToday?'Сегодня, ':''}${fmtDate(d)}</b><button class="ico" data-act="ddate" data-d="1" ${isToday?'disabled style="opacity:.3"':''}>›</button></div>`;
+  let h=`<h2>Дневник</h2>`+segHtml([['food','🍽 Еда'],['baby','👶 Малыш'],['weight','⚖️ Вес малыша'],['mweight','🤍 Мой вес']],ui.diary,'diary');
+  if(ui.diary==='food'||ui.diary==='baby')h+=`<div class="row between" style="margin-bottom:12px"><button class="ico" data-act="ddate" data-d="-1">‹</button><b>${isToday?'Сегодня, ':''}${fmtDate(d)}</b><button class="ico" data-act="ddate" data-d="1" ${isToday?'disabled style="opacity:.3"':''}>›</button></div>`;
   if(ui.diary==='food')h+=diaryFood();
   if(ui.diary==='baby')h+=diaryBaby();
   if(ui.diary==='weight')h+=diaryWeight();
+  if(ui.diary==='mweight')h+=diaryMomWeight();
   return h;
 }
 function entryHtml(f){
@@ -674,13 +675,28 @@ function diaryBaby(){
 }
 function diaryWeight(){
   const ws=weights().slice().reverse(),w=ui.wd;
-  let h=`<section class="card"><h3>Новое взвешивание</h3><div class="grid g2"><div><label class="f" style="margin-top:0">Дата</label><input type="date" data-bind="wdate" value="${w.date}" max="${ymd()}"></div><div><label class="f" style="margin-top:0">Вес (кг или граммы)</label><input type="text" inputmode="decimal" data-bind="wval" value="${esc(w.v)}" placeholder="4,25 или 4250"></div></div><button class="btn block" style="margin-top:12px" data-act="wsave">Сохранить вес</button></section>`;
+  let h=`<section class="card"><h3>Вес малыша: новое взвешивание</h3><div class="grid g2"><div><label class="f" style="margin-top:0">Дата</label><input type="date" data-bind="wdate" value="${w.date}" max="${ymd()}"></div><div><label class="f" style="margin-top:0">Вес (кг или граммы)</label><input type="text" inputmode="decimal" data-bind="wval" value="${esc(w.v)}" placeholder="4,25 или 4250"></div></div><button class="btn block" style="margin-top:12px" data-act="wsave">Сохранить вес</button></section>`;
   h+=`<section class="card"><h3>История</h3>`;
   if(!ws.length)h+='<div class="empty">Пока нет взвешиваний.</div>';
   else ws.forEach((x,i)=>{const prev=ws[i+1];let dl='';if(prev){const dg=x.g-prev.g,dd=Math.max(1,diffDays(prev.date,x.date));dl=`<span class="badge ${dg>=0?'b-ok':'b-care'}">${dg>=0?'+':''}${dg} г · ${Math.round(dg/dd)} г/сут</span>`}
     h+=`<div class="entry"><div><b>${fmtKg(x.g)}</b> ${dl}<div class="mute sm">${fmtDate(x.date)}</div></div><button class="ico" data-act="wdel" data-id="${x.id}" aria-label="Удалить">🗑</button></div>`});
   h+='</section>';
   return h;
+}
+
+const momW=()=>[...(D.mw||[])].sort((a,b)=>a.date.localeCompare(b.date));
+const parseMW=s=>{const v=parseFloat(String(s).replace(',','.'));return(!v||isNaN(v)||v<30||v>250)?null:Math.round(v*10)/10};
+const fmtMW=v=>v.toFixed(1).replace('.',',')+' кг';
+function diaryMomWeight(){
+  const ws=momW().reverse(),m=ui.mw;
+  let h=`<section class="card"><h3>Мой вес</h3><div class="mute sm" style="margin:-4px 0 6px">Записи только для вас: к весу малыша они не относятся и на его график не влияют.</div>
+  <div class="grid g2"><div><label class="f" style="margin-top:0">Дата</label><input type="date" data-bind="mwdate" value="${m.date}" max="${ymd()}"></div><div><label class="f" style="margin-top:0">Вес, кг</label><input type="text" inputmode="decimal" data-bind="mwval" value="${esc(m.v)}" placeholder="62,5"></div></div>
+  <button class="btn block" style="margin-top:12px" data-act="mwsave">Сохранить вес</button></section>
+  <section class="card"><h3>История</h3>`;
+  if(!ws.length)h+='<div class="empty">Пока нет записей. Достаточно взвешиваться раз в неделю утром в одинаковых условиях.</div>';
+  else ws.forEach((x,i)=>{const prev=ws[i+1];let dl='';if(prev){const d=r1(x.kg-prev.kg);dl=`<span class="badge b-rare">${d>0?'+':''}${String(d).replace('.',',')} кг</span>`}
+    h+=`<div class="entry"><div><b>${fmtMW(x.kg)}</b> ${dl}<div class="mute sm">${fmtDate(x.date)}</div></div><button class="ico" data-act="mwdel" data-id="${x.id}" aria-label="Удалить">🗑</button></div>`});
+  return h+'</section>';
 }
 
 /* --- тренды --- */
@@ -706,6 +722,16 @@ function viewTrends(){
       else if(days<5)h+='<div class="alert a-blue">Между взвешиваниями меньше 5 дней: оценивать прибавку рано.</div>'}
   }else h+='<div class="alert a-blue">Добавьте хотя бы два взвешивания, и появится динамика. Для ориентира укажите дату рождения и вес при рождении в настройках ⚙️.</div>';
   h+='<div class="mute sm" style="margin-top:6px">Ориентир построен по средним месячным прибавкам из российских педиатрических таблиц. Это не норматив, а подсказка.</div></section>';
+  // вес мамы
+  const mws=momW();
+  h+=`<section class="card"><h3>🤍 Мой вес</h3>${chart({series:[{name:'Вес мамы',color:'#C9A0DC',pts:mws.map(x=>[x.date,x.kg]),dots:true,area:true}],fmt:v=>v.toFixed(1).replace('.',',')})}`;
+  if(mws.length>=2){
+    const a=mws[0],b=mws[mws.length-1],days=Math.max(1,diffDays(a.date,b.date)),ch=r1(b.kg-a.kg),wk=r1(ch/days*7);
+    h+=`<div class="grid g3" style="margin-top:12px"><div class="stat"><b>${fmtMW(b.kg).replace(' кг','')}</b><span>сейчас, кг</span></div><div class="stat"><b>${ch>0?'+':''}${String(ch).replace('.',',')}</b><span>кг за ${days} дн.</span></div><div class="stat"><b>${wk>0?'+':''}${String(wk).replace('.',',')}</b><span>кг в неделю</span></div></div>`;
+    if(days>=7&&wk<=-1)h+='<div class="alert a-amber">Вес снижается быстрее 1 кг в неделю. При грудном вскармливании и безмолочной диете лучше обсудить это с врачом и убедиться, что вы едите достаточно.</div>';
+    else h+='<div class="alert a-blue">Это просто наблюдение. Вес колеблется из-за воды, сна и режима питания, поэтому смотрите на тенденцию за несколько недель.</div>';
+  }else h+='<div class="alert a-blue">Добавьте хотя бы две записи в «Дневник → Мой вес», и появится динамика.</div>';
+  h+='</section>';
   // индекс
   const days=Object.keys(D.baby).sort().slice(-30);
   const pts=days.map(d=>[d,babyScore(d)]);
@@ -884,6 +910,9 @@ const ACT={
  bdel:()=>{delete D.baby[ui.diaryDate];ui.bdDate=null;save();render()},
  wsave:()=>{const g=parseW(ui.wd.v);if(!g)return toast('Введите вес, например 4,25 или 4250');
    D.weight=D.weight.filter(x=>x.date!==ui.wd.date);D.weight.push({id:uid(),date:ui.wd.date,g});ui.wd.v='';save();render();toast('Вес сохранён')},
+ mwsave:()=>{const kg=parseMW(ui.mw.v);if(!kg)return toast('Введите вес в кг, например 62,5');
+   D.mw=(D.mw||[]).filter(x=>x.date!==ui.mw.date);D.mw.push({id:uid(),date:ui.mw.date,kg});ui.mw.v='';save();render();toast('Вес сохранён')},
+ mwdel:d=>{D.mw=(D.mw||[]).filter(x=>x.id!==d.id);save();render()},
  wdel:d=>{D.weight=D.weight.filter(x=>x.id!==d.id);save();render()},
  pst:d=>{ui.pf.st=d.v;render()},
  flag:d=>{D.flags[d.p]=D.flags[d.p]===d.v?undefined:d.v;if(!D.flags[d.p])delete D.flags[d.p];save();$('#prodList').innerHTML=prodList()},
@@ -901,6 +930,7 @@ const BIND={
  fslot:el=>{ui.fd.slot=el.value},ftext:el=>{ui.fd.text=el.value},fnew:el=>{ui.fd.isNew=el.checked},
  frec:el=>{if(el.value){ui.fd.rec.push(el.value);render()}},
  bstool:el=>{ui.bd.stool=el.value},btemp:el=>{ui.bd.temp=el.value},bnote:el=>{ui.bd.note=el.value},
+ mwdate:el=>{ui.mw.date=el.value||ymd()},mwval:el=>{ui.mw.v=el.value},
  wdate:el=>{ui.wd.date=el.value||ymd()},wval:el=>{ui.wd.v=el.value},
  plateMeal:el=>{ui.plateMeal=el.value},
  shopck:el=>{if(el.checked)D.shop[el.dataset.p]=true;else delete D.shop[el.dataset.p];save();el.closest('.check').classList.toggle('done',el.checked)},
